@@ -2,6 +2,7 @@ var fs = require('fs');
 var path = require('path');
 var _ = require('underscore');
 var headers = require('../web/http-helpers.js');
+var request = require('http-request');
 
 
 /*
@@ -12,8 +13,8 @@ var headers = require('../web/http-helpers.js');
  */
 
 exports.paths = {
-  'siteAssets' : path.join(__dirname, '../web/public'),
-  'archivedSites' : path.join(__dirname, '../archives/sites'),
+  'siteAssets' : path.join(__dirname, '../web/public/'),
+  'archivedSites' : path.join(__dirname, '../archives/sites/'),
   'list' : path.join(__dirname, '../archives/sites.txt')
 };
 
@@ -29,19 +30,23 @@ exports.initialize = function(pathsObj){
 
 exports.readListOfUrls = function(callback){
   var data;
-  fs.readFile('../archives/sites.txt', function(err, readData){
+  fs.readFile(exports.paths.list, function(err, readData){
     if (err){
       throw err;
     }
     data = readData.toString();
+    console.log('read list of data:' + data);
+    data = data.split('\n');
+    console.log('read list of data array:' + data);
+
     callback(data);
-    console.log('read list of URL: ' + data);
+    // console.log('read list of URL: ' + data);
   });
 };
 
 exports.isUrlInList = function(dataList, userUrl){
-  var array = dataList.split('\n');
-  console.log('url list: ', array);
+  var array = dataList;
+  // console.log('url list: ', array);
   if (array.indexOf(userUrl) !== -1){
     return true;
   }else{
@@ -51,7 +56,7 @@ exports.isUrlInList = function(dataList, userUrl){
 };
 
 exports.addUrlToList = function(url, callback){
-  fs.appendFile ('../archives/sites.txt', url+'\n',function(err){
+  fs.appendFile (exports.paths.list, url+'\n',function(err){
     if (err){
       throw err;
     } else {
@@ -60,35 +65,79 @@ exports.addUrlToList = function(url, callback){
   });
 };
 
-exports.isURLArchived = function(url, response){
-  var path = '../archives/sites/'+url;
-  fs.exists(path, function(exists){
+// exports.isURLArchived = function(url, response){
+//   console.log ('is url archived: ' + url);
+//   var pathUrl = exports.paths.archivedSites+url;
+//   pathUrl = path.normalize(pathUrl);
+//   console.log('path URL normalize', pathUrl);
+//   fs.exists(pathUrl, function(exists){
+//     if(exists){
+//       console.log('Exists!');
+//       exports.readHtml(pathUrl, response);
+//     } else {
+//       console.log('Does not exists!');
+//       exports.readHtml(undefined, response);
+
+//     }
+//   });
+// };
+
+exports.isURLArchived = function(url, response, callback){
+  console.log ('is url archived: ' + url);
+  var pathUrl = exports.paths.archivedSites+url;
+  pathUrl = path.normalize(pathUrl);
+  console.log('path URL normalize', pathUrl);
+  fs.exists(pathUrl, function(exists){
     if(exists){
       console.log('Exists!');
-      exports.readHtml(path, response);
+      callback(pathUrl, response);
     } else {
-      console.log('Does not exists!');
-      exports.readHtml(undefined, response);
+      console.log('Does not exists!', (typeof callback));
+      callback(undefined, response);
 
     }
   });
 };
 
-exports.downloadUrls = function(){
+
+
+exports.downloadUrls = function(url){
+  request.get('http://'+url, exports.paths.archivedSites + url, function(err){
+    if (err){
+      console.log('downloadURLs: ',url);
+      throw err;
+    }
+  });
 };
 
 
-exports.readHtml = function(location, response){
-
-  location = location || './public/loading.html';
-
+exports.readHtml = function(location, response, status){
+  status = status || 200;
+  location = location || exports.paths.siteAssets+'loading.html';
+  console.log('read file location: ' + location);
   fs.readFile(location, function(err,data){
     if(err){
+      console.log('read file error: ', err);
       throw err;
     } else {
-      headers.sendResponse(response, data.toString(), 201);
-      console.log('loading: ', data.toString());
+      console.log('before send response: ' + status);
+      headers.sendResponse(response, data.toString(), status);
 
     }
   });
 };
+
+// exports.fetchSites = function(){
+//   exports.readListOfUrls(function(arrayOfSites){
+//     _.each(arrayOfSites, function(url){
+//       exports.isURLArchived(url, undefined, function(url2){
+//         if (!url2){
+//           exports.downloadUrls(url);
+//         }
+//       });
+//     });
+//   });
+// };
+
+// exports.fetchSites();
+

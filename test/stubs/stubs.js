@@ -30,12 +30,12 @@ exports.Response = function() {
   this._data = null;
   var self = this;
   this.writeHead = function(responseCode, headers) {
-    console.log("WriteHead called with " + responseCode);
+    //console.log("WriteHead called with " + responseCode);
     self._responseCode = responseCode;
     self._headers = headers;
   }
   this.end = function(data) {
-    console.log("Response.end called.");
+    //console.log("Response.end called.");
     self._ended = true;
     self._data = data;
   }

@@ -1,6 +1,7 @@
 var path = require('path');
 var archive = require('../helpers/archive-helpers');
 var headers = require('./http-helpers.js');
+var urlParse = require('url');
 // require more modules/folders here!
 
 var dataCollection = function(request, callback){
@@ -9,14 +10,41 @@ var dataCollection = function(request, callback){
     data += partial;
   });
   request.on('end', function(){
-    console.log('datacollection:' + data);
+    // console.log('datacollection:' + data);
     callback(data);
   });
 
 };
 
 var getMessage= function(request, response){
-  archive.readHtml('./public/index.html', response);
+  //console.log('request.url is: '+ request.url);
+  var userUrlPath = urlParse.parse(request.url).pathname;
+
+  if (userUrlPath === '/' && urlParse.parse(request.url).search === null){
+    console.log('archived path:' + archive.paths.siteAssets);
+    archive.readHtml(archive.paths.siteAssets +'index.html', response);
+  } else {
+    userUrlPath = userUrlPath.slice(1);
+    console.log('request.url is: '+ request.url);
+    var urlsite;
+
+    console.log('user url pathname: ', userUrlPath);
+
+    archive.readListOfUrls(function(data){
+      urlsite = data;
+      //console.log('readlistofURLs callback: ' + urlsite);
+
+      if (archive.isUrlInList(urlsite, userUrlPath)){
+        console.log('url in list: found ', userUrlPath);
+        console.log(archive.readHtml);
+        archive.isURLArchived(userUrlPath, response, archive.readHtml);
+      }else{
+        console.log('url in list: not found');
+        archive.readHtml(archive.paths.siteAssets +'index.html', response, 404);
+      }
+    });
+  }
+
 };
 
 var postMessage = function(request, response){
@@ -26,20 +54,21 @@ var postMessage = function(request, response){
 
   dataCollection(request, function(postData){
     data = postData;
-    userUrl = data.split('=')[1];
-    console.log('request handler: ' + userUrl);
+    var userUrl = data.split('=')[1];
+    // console.log('request handler: ' + userUrl);
 
     archive.readListOfUrls(function(data){
       urlsite = data;
-      console.log('readlistofURLs callback: ' + urlsite);
+      // console.log('readlistofURLs callback: ' + urlsite);
 
       if (archive.isUrlInList(urlsite, userUrl)){
-        console.log('found');
-        archive.isURLArchived(userUrl, response);
+        // console.log('found');
+        archive.isURLArchived(userUrl, response, archive.readHtml);
       }else{
-        console.log('not found');
+        // console.log('not found');
         archive.addUrlToList(userUrl, function(){
-          archive.readHtml(undefined, response);
+          console.log('add url to list status: 302')
+          archive.readHtml(undefined, response, 302);
         });
       }
     });
